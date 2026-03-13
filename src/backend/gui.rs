@@ -15,8 +15,10 @@ impl Backend for GuiBackend {
 
         let options = eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
-                .with_title("bouncer")
-                .with_inner_size([500.0, 350.0]),
+                .with_title("Bouncer")
+                .with_app_id("bouncer")
+                .with_inner_size([500.0, 350.0])
+                .with_window_type(egui::viewport::X11WindowType::Dialog),
             ..Default::default()
         };
 
