@@ -3,7 +3,6 @@ mod backend;
 mod browser;
 mod message;
 mod rules;
-mod ui;
 
 use backend::{Backend, tui::TuiBackend};
 
