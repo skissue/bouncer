@@ -20,10 +20,12 @@
     });
 
     devShells = forAllSystems (pkgs: {
-      default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [rustc cargo];
-        buildInputs = with pkgs; [rustfmt];
-      };
+      default = with pkgs;
+        mkShell {
+          nativeBuildInputs = [rustc cargo];
+          buildInputs = [rustfmt];
+          LD_LIBRARY_PATH = lib.makeLibraryPath [wayland libxkbcommon libGL];
+        };
     });
   };
 }

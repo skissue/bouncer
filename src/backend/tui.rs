@@ -22,14 +22,14 @@ use super::{Backend, RunResult};
 pub struct TuiBackend;
 
 impl Backend for TuiBackend {
-    fn run(&mut self, app: &mut App) -> Result<Option<RunResult>, Box<dyn std::error::Error>> {
+    fn run(self, mut app: App) -> Result<Option<RunResult>, Box<dyn std::error::Error>> {
         enable_raw_mode()?;
         let mut stdout = stdout();
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
-        let result = event_loop(&mut terminal, app);
+        let result = event_loop(&mut terminal, &mut app);
 
         disable_raw_mode()?;
         execute!(terminal.backend_mut(), LeaveAlternateScreen)?;

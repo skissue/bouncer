@@ -4,7 +4,7 @@ mod browser;
 mod message;
 mod rules;
 
-use backend::{Backend, tui::TuiBackend};
+use backend::Backend;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -19,10 +19,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cleaned_url = cleaner.clean(&original_url);
 
     let browsers = browser::discover_browsers("bouncer");
-    let mut app = app::App::new(original_url, cleaned_url, browsers);
+    let app = app::App::new(original_url, cleaned_url, browsers);
 
-    let mut backend = TuiBackend;
-    let result = backend.run(&mut app)?;
+    #[cfg(feature = "tui")]
+    let backend = backend::tui::TuiBackend;
+    #[cfg(feature = "gui")]
+    let backend = backend::gui::GuiBackend;
+
+    let result = backend.run(app)?;
 
     if let Some(run_result) = result {
         browser::open_url_with(&run_result.exec, &run_result.url);
