@@ -3,16 +3,32 @@
   rustPlatform,
   copyDesktopItems,
   makeDesktopItem,
+  gui ? false,
+  pkg-config,
+  wayland,
+  libxkbcommon,
+  libGL,
 }:
 rustPlatform.buildRustPackage {
-  pname = "bouncer";
+  pname = "bouncer${lib.optionalString gui "-gui"}";
   version = "0.1.0";
 
   cargoLock.lockFile = ./Cargo.lock;
 
   src = lib.cleanSource ./.;
 
-  nativeBuildInputs = [copyDesktopItems];
+  buildNoDefaultFeatures = true;
+  buildFeatures = [
+    (
+      if gui
+      then "gui"
+      else "tui"
+    )
+  ];
+
+  nativeBuildInputs = [copyDesktopItems] ++ lib.optionals gui [pkg-config];
+
+  buildInputs = lib.optionals gui [wayland libxkbcommon libGL];
 
   desktopItems = [
     (makeDesktopItem {
@@ -20,7 +36,7 @@ rustPlatform.buildRustPackage {
       desktopName = "Bouncer";
       comment = "Screen links before opening in a browser";
       exec = "bouncer %u";
-      terminal = true;
+      terminal = !gui;
       mimeTypes = ["x-scheme-handler/http" "x-scheme-handler/https"];
       categories = ["Network" "WebBrowser"];
     })
