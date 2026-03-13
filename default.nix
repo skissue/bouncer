@@ -8,7 +8,7 @@ rustPlatform.buildRustPackage {
   pname = "bouncer";
   version = "0.1.0";
 
-  cargoHash = "sha256-ilLu+V1fQaBkdFf/D7naopg/tbGLX5/pM1kpDk/jpIU=";
+  cargoLock.lockFile = ./Cargo.lock;
 
   src = lib.cleanSource ./.;
 
