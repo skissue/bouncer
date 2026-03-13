@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Bouncer
+Comment=Screen links before opening in a browser
+Exec=bouncer %u
+Terminal=true
+MimeType=x-scheme-handler/http;x-scheme-handler/https;
+Categories=Network;WebBrowser;
