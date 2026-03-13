@@ -18,5 +18,12 @@
       bouncer = pkgs.callPackage ./default.nix {};
       default = bouncer;
     });
+
+    devShells = forAllSystems (pkgs: {
+      default = pkgs.mkShell {
+        nativeBuildInputs = with pkgs; [rustc cargo];
+        buildInputs = with pkgs; [rustfmt];
+      };
+    });
   };
 }
