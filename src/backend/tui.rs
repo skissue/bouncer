@@ -11,13 +11,15 @@ use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, HighlightSpacing, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{
+        Block, Borders, Clear, HighlightSpacing, List, ListItem, ListState, Paragraph, Wrap,
+    },
 };
 use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
 
-use crate::app::App;
 use crate::message::{Action, Message};
+use crate::{app::App, backend::RunAction};
 
 use super::{Backend, RunResult};
 
@@ -69,7 +71,10 @@ fn event_loop(
                             Action::None => {}
                             Action::Quit => return Ok(None),
                             Action::OpenUrl { exec, url } => {
-                                return Ok(Some(RunResult { exec, url }));
+                                return Ok(Some(RunResult {
+                                    action: RunAction::Exec(exec),
+                                    url,
+                                }));
                             }
                         }
                     }
@@ -114,7 +119,10 @@ fn event_loop(
                     Action::None => {}
                     Action::Quit => return Ok(None),
                     Action::OpenUrl { exec, url } => {
-                        return Ok(Some(RunResult { exec, url }));
+                        return Ok(Some(RunResult {
+                            action: RunAction::Exec(exec),
+                            url,
+                        }));
                     }
                 }
             }
@@ -123,15 +131,9 @@ fn event_loop(
 }
 
 fn draw(frame: &mut Frame, app: &App, url_input: &Option<Input>) {
-    let chunks = Layout::vertical([
-        Constraint::Min(5),
-        Constraint::Length(3),
-    ])
-    .split(frame.area());
+    let chunks = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(frame.area());
 
-    let main_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" bouncer ");
+    let main_block = Block::default().borders(Borders::ALL).title(" bouncer ");
 
     let mut text = vec![
         Line::from(""),
@@ -162,12 +164,7 @@ fn draw(frame: &mut Frame, app: &App, url_input: &Option<Input>) {
         )));
         for (i, (module_idx, proposal)) in app.offers.iter().enumerate() {
             let name = app.modules[*module_idx].name();
-            text.push(Line::from(format!(
-                "  [{}] {} — {}",
-                i + 1,
-                name,
-                proposal
-            )));
+            text.push(Line::from(format!("  [{}] {} — {}", i + 1, name, proposal)));
         }
     }
 
@@ -290,18 +287,30 @@ fn draw_footer(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 
     if !app.offers.is_empty() {
         if app.offers.len() == 1 {
-            spans.push(Span::styled("[1]", Style::default().add_modifier(Modifier::DIM)));
+            spans.push(Span::styled(
+                "[1]",
+                Style::default().add_modifier(Modifier::DIM),
+            ));
         } else {
             spans.push(Span::styled(
                 format!("[1-{}]", app.offers.len()),
                 Style::default().add_modifier(Modifier::DIM),
             ));
         }
-        spans.push(Span::styled(" Apply module   ", Style::default().add_modifier(Modifier::DIM)));
+        spans.push(Span::styled(
+            " Apply module   ",
+            Style::default().add_modifier(Modifier::DIM),
+        ));
     }
 
-    spans.push(Span::styled("[q]", Style::default().add_modifier(Modifier::DIM)));
-    spans.push(Span::styled(" Quit", Style::default().add_modifier(Modifier::DIM)));
+    spans.push(Span::styled(
+        "[q]",
+        Style::default().add_modifier(Modifier::DIM),
+    ));
+    spans.push(Span::styled(
+        " Quit",
+        Style::default().add_modifier(Modifier::DIM),
+    ));
 
     let footer = Paragraph::new(Line::from(spans)).block(footer_block);
     frame.render_widget(footer, area);

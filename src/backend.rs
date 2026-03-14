@@ -1,7 +1,7 @@
-#[cfg(feature = "tui")]
-pub mod tui;
 #[cfg(feature = "gui")]
 pub mod gui;
+#[cfg(feature = "tui")]
+pub mod tui;
 
 #[cfg(all(feature = "tui", feature = "gui"))]
 compile_error!("Features `tui` and `gui` are mutually exclusive.");
@@ -12,8 +12,13 @@ use crate::app::App;
 
 #[derive(Clone)]
 pub struct RunResult {
-    pub exec: String,
+    pub action: RunAction,
     pub url: String,
+}
+
+#[derive(Clone)]
+pub enum RunAction {
+    Exec(String),
 }
 
 pub trait Backend {

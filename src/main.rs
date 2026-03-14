@@ -8,6 +8,8 @@ mod rules;
 use backend::Backend;
 use module::TrackingCleanerModule;
 
+use crate::backend::RunResult;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
@@ -19,9 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cleaner = rules::Cleaner::from_json(data);
     let url = args[1].clone();
 
-    let modules: Vec<Box<dyn module::Module>> = vec![
-        Box::new(TrackingCleanerModule::new(cleaner)),
-    ];
+    let modules: Vec<Box<dyn module::Module>> = vec![Box::new(TrackingCleanerModule::new(cleaner))];
 
     let browsers = browser::discover_browsers("bouncer");
     let app = app::App::new(url, modules, browsers);
@@ -33,8 +33,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let result = backend.run(app)?;
 
-    if let Some(run_result) = result {
-        browser::open_url_with(&run_result.exec, &run_result.url);
+    if let Some(RunResult { action, url }) = result {
+        match action {
+            backend::RunAction::Exec(command) => {
+                browser::open_url_with(&command, &url);
+            }
+        }
     }
 
     Ok(())
