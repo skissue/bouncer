@@ -1,5 +1,5 @@
 pub enum Message {
-    ToggleCleaning,
+    ApplyModule(usize),
     OpenBrowserPicker,
     CloseBrowserPicker,
     SelectNext,

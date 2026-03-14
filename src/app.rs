@@ -1,46 +1,68 @@
 use crate::browser::BrowserEntry;
 use crate::message::{Action, Message};
+use crate::module::Module;
 
 pub struct App {
     pub original_url: String,
-    pub cleaned_url: String,
-    pub cleaning_enabled: bool,
+    pub url: String,
     pub should_quit: bool,
     pub browsers: Vec<BrowserEntry>,
     pub selected_browser: usize,
     pub show_browser_picker: bool,
+    pub modules: Vec<Box<dyn Module>>,
+    pub offers: Vec<(usize, String)>,
 }
 
 impl App {
-    pub fn new(original_url: String, cleaned_url: String, browsers: Vec<BrowserEntry>) -> Self {
+    pub fn new(
+        url: String,
+        modules: Vec<Box<dyn Module>>,
+        browsers: Vec<BrowserEntry>,
+    ) -> Self {
         let default_idx = browsers
             .iter()
             .position(|b| b.is_default)
             .unwrap_or(0);
 
+        let offers = Self::evaluate_modules(&modules, &url);
+
         Self {
-            original_url,
-            cleaned_url,
-            cleaning_enabled: true,
+            original_url: url.clone(),
+            url,
             should_quit: false,
             browsers,
             selected_browser: default_idx,
             show_browser_picker: false,
+            modules,
+            offers,
         }
     }
 
+    fn evaluate_modules(modules: &[Box<dyn Module>], url: &str) -> Vec<(usize, String)> {
+        modules
+            .iter()
+            .enumerate()
+            .filter_map(|(i, m)| m.evaluate(url).map(|proposal| (i, proposal)))
+            .collect()
+    }
+
+    fn re_evaluate(&mut self) {
+        self.offers = Self::evaluate_modules(&self.modules, &self.url);
+    }
+
     pub fn active_url(&self) -> &str {
-        if self.cleaning_enabled {
-            &self.cleaned_url
-        } else {
-            &self.original_url
-        }
+        &self.url
     }
 
     pub fn update(&mut self, msg: Message) -> Action {
         match msg {
-            Message::ToggleCleaning => {
-                self.cleaning_enabled = !self.cleaning_enabled;
+            Message::ApplyModule(idx) => {
+                if let Some(&(module_idx, _)) = self.offers.get(idx) {
+                    if let Ok(new_url) = self.modules[module_idx].transform(&self.url) {
+                        self.url = new_url;
+                        self.re_evaluate();
+                    }
+                }
                 Action::None
             }
             Message::OpenBrowserPicker => {

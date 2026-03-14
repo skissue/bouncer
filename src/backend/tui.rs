@@ -62,8 +62,11 @@ fn event_loop(
             } else {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => Some(Message::Quit),
-                    KeyCode::Char('c') => Some(Message::ToggleCleaning),
                     KeyCode::Enter => Some(Message::OpenBrowserPicker),
+                    KeyCode::Char(c @ '1'..='9') => {
+                        let idx = (c as usize) - ('1' as usize);
+                        Some(Message::ApplyModule(idx))
+                    }
                     _ => None,
                 }
             };
@@ -88,52 +91,47 @@ fn draw(frame: &mut Frame, app: &App) {
     ])
     .split(frame.area());
 
-    // Main block
     let main_block = Block::default()
         .borders(Borders::ALL)
         .title(" bouncer ");
 
-    let active_label = if app.cleaning_enabled {
-        "Cleaned URL"
-    } else {
-        "Original URL (cleaning disabled)"
-    };
-
-    let status_line = if app.original_url != app.cleaned_url {
-        Line::from(vec![
-            Span::raw("  Status: "),
-            Span::styled("✔ Cleaned", Style::default().fg(Color::Green)),
-        ])
-    } else {
-        Line::from(vec![
-            Span::raw("  Status: "),
-            Span::styled("— No changes", Style::default().fg(Color::Yellow)),
-        ])
-    };
-
-    let text = vec![
+    let mut text = vec![
         Line::from(""),
         Line::from(Span::styled(
             "  Original URL:",
             Style::default().add_modifier(Modifier::BOLD),
         )),
         Line::from(format!("  {}", app.original_url)),
-        Line::from(""),
-        Line::from(Span::styled(
-            format!("  {active_label}:"),
-            Style::default().add_modifier(Modifier::BOLD),
-        )),
-        Line::from(Span::styled(
-            format!("  {}", app.active_url()),
-            if app.cleaning_enabled {
-                Style::default().fg(Color::Green)
-            } else {
-                Style::default().fg(Color::White)
-            },
-        )),
-        Line::from(""),
-        status_line,
     ];
+
+    if app.url != app.original_url {
+        text.push(Line::from(""));
+        text.push(Line::from(Span::styled(
+            "  Current URL:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )));
+        text.push(Line::from(Span::styled(
+            format!("  {}", app.url),
+            Style::default().fg(Color::Green),
+        )));
+    }
+
+    if !app.offers.is_empty() {
+        text.push(Line::from(""));
+        text.push(Line::from(Span::styled(
+            "  Available actions:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )));
+        for (i, (module_idx, proposal)) in app.offers.iter().enumerate() {
+            let name = app.modules[*module_idx].name();
+            text.push(Line::from(format!(
+                "  [{}] {} — {}",
+                i + 1,
+                name,
+                proposal
+            )));
+        }
+    }
 
     let paragraph = Paragraph::new(text)
         .block(main_block)
@@ -143,7 +141,7 @@ fn draw(frame: &mut Frame, app: &App) {
     if app.show_browser_picker {
         draw_browser_picker(frame, app, chunks[1]);
     } else {
-        draw_footer(frame, chunks[1]);
+        draw_footer(frame, app, chunks[1]);
     }
 }
 
@@ -157,7 +155,7 @@ fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
 }
 
 fn draw_browser_picker(frame: &mut Frame, app: &App, _area: ratatui::layout::Rect) {
-    let list_height = app.browsers.len() as u16 + 2; // +2 for borders
+    let list_height = app.browsers.len() as u16 + 2;
     let footer_height: u16 = 3;
     let total_height = list_height + footer_height;
     let width = 40;
@@ -204,7 +202,6 @@ fn draw_browser_picker(frame: &mut Frame, app: &App, _area: ratatui::layout::Rec
     state.select(Some(app.selected_browser));
     frame.render_stateful_widget(list, picker_chunks[0], &mut state);
 
-    // Picker footer
     let footer_block = Block::default().borders(Borders::ALL);
     let footer = Paragraph::new(Line::from(vec![
         Span::styled("  [↑↓]", Style::default().add_modifier(Modifier::DIM)),
@@ -218,16 +215,29 @@ fn draw_browser_picker(frame: &mut Frame, app: &App, _area: ratatui::layout::Rec
     frame.render_widget(footer, picker_chunks[1]);
 }
 
-fn draw_footer(frame: &mut Frame, area: ratatui::layout::Rect) {
+fn draw_footer(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     let footer_block = Block::default().borders(Borders::ALL);
-    let footer = Paragraph::new(Line::from(vec![
-        Span::styled("  [c]", Style::default().add_modifier(Modifier::DIM)),
-        Span::styled(" Toggle cleaning   ", Style::default().add_modifier(Modifier::DIM)),
-        Span::styled("[Enter]", Style::default().add_modifier(Modifier::DIM)),
+
+    let mut spans = vec![
+        Span::styled("  [Enter]", Style::default().add_modifier(Modifier::DIM)),
         Span::styled(" Open URL   ", Style::default().add_modifier(Modifier::DIM)),
-        Span::styled("[q]", Style::default().add_modifier(Modifier::DIM)),
-        Span::styled(" Quit", Style::default().add_modifier(Modifier::DIM)),
-    ]))
-    .block(footer_block);
+    ];
+
+    if !app.offers.is_empty() {
+        if app.offers.len() == 1 {
+            spans.push(Span::styled("[1]", Style::default().add_modifier(Modifier::DIM)));
+        } else {
+            spans.push(Span::styled(
+                format!("[1-{}]", app.offers.len()),
+                Style::default().add_modifier(Modifier::DIM),
+            ));
+        }
+        spans.push(Span::styled(" Apply module   ", Style::default().add_modifier(Modifier::DIM)));
+    }
+
+    spans.push(Span::styled("[q]", Style::default().add_modifier(Modifier::DIM)));
+    spans.push(Span::styled(" Quit", Style::default().add_modifier(Modifier::DIM)));
+
+    let footer = Paragraph::new(Line::from(spans)).block(footer_block);
     frame.render_widget(footer, area);
 }

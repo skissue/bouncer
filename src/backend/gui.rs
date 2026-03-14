@@ -62,7 +62,6 @@ impl GuiApp {
 
 impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Collect keyboard messages first to avoid borrow conflicts.
         let msg = if self.app.show_browser_picker {
             ctx.input(|i| {
                 if i.key_pressed(egui::Key::Escape) {
@@ -81,11 +80,26 @@ impl eframe::App for GuiApp {
             ctx.input(|i| {
                 if i.key_pressed(egui::Key::Q) || i.key_pressed(egui::Key::Escape) {
                     Some(Message::Quit)
-                } else if i.key_pressed(egui::Key::C) {
-                    Some(Message::ToggleCleaning)
                 } else if i.key_pressed(egui::Key::Enter) {
                     Some(Message::OpenBrowserPicker)
                 } else {
+                    for n in 1..=9u8 {
+                        let key = match n {
+                            1 => egui::Key::Num1,
+                            2 => egui::Key::Num2,
+                            3 => egui::Key::Num3,
+                            4 => egui::Key::Num4,
+                            5 => egui::Key::Num5,
+                            6 => egui::Key::Num6,
+                            7 => egui::Key::Num7,
+                            8 => egui::Key::Num8,
+                            9 => egui::Key::Num9,
+                            _ => unreachable!(),
+                        };
+                        if i.key_pressed(key) {
+                            return Some(Message::ApplyModule((n - 1) as usize));
+                        }
+                    }
                     None
                 }
             })
@@ -95,7 +109,6 @@ impl eframe::App for GuiApp {
             self.handle_message(msg, ctx);
         }
 
-        // Draw UI.
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("bouncer");
             ui.add_space(8.0);
@@ -105,47 +118,43 @@ impl eframe::App for GuiApp {
                 ui.label(&self.app.original_url);
             });
 
-            ui.add_space(4.0);
-
-            let active_label = if self.app.cleaning_enabled {
-                "Cleaned URL"
-            } else {
-                "Original URL (cleaning disabled)"
-            };
-            ui.horizontal(|ui| {
-                ui.strong(format!("{active_label}:"));
-                let url_text = self.app.active_url();
-                if self.app.cleaning_enabled {
-                    ui.colored_label(egui::Color32::from_rgb(100, 200, 100), url_text);
-                } else {
-                    ui.label(url_text);
-                }
-            });
-
-            ui.add_space(4.0);
-
-            ui.horizontal(|ui| {
-                ui.strong("Status:");
-                if self.app.original_url != self.app.cleaned_url {
-                    ui.colored_label(egui::Color32::from_rgb(100, 200, 100), "✔ Cleaned");
-                } else {
-                    ui.colored_label(egui::Color32::from_rgb(200, 200, 100), "— No changes");
-                }
-            });
+            if self.app.url != self.app.original_url {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.strong("Current URL:");
+                    ui.colored_label(egui::Color32::from_rgb(100, 200, 100), self.app.active_url());
+                });
+            }
 
             ui.add_space(16.0);
 
-            ui.horizontal(|ui| {
-                let toggle_label = if self.app.cleaning_enabled {
-                    "Disable Cleaning [c]"
-                } else {
-                    "Enable Cleaning [c]"
-                };
-                if ui.button(toggle_label).clicked() {
-                    let msg = Message::ToggleCleaning;
-                    self.handle_message(msg, ctx);
+            if !self.app.offers.is_empty() {
+                ui.strong("Available actions:");
+                ui.add_space(4.0);
+
+                let offers: Vec<(usize, String, String)> = self
+                    .app
+                    .offers
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (module_idx, proposal))| {
+                        let name = self.app.modules[*module_idx].name().to_string();
+                        (i, name, proposal.clone())
+                    })
+                    .collect();
+
+                for (i, name, proposal) in &offers {
+                    let label = format!("[{}] {} — {}", i + 1, name, proposal);
+                    if ui.button(&label).clicked() {
+                        let msg = Message::ApplyModule(*i);
+                        self.handle_message(msg, ctx);
+                    }
                 }
 
+                ui.add_space(8.0);
+            }
+
+            ui.horizontal(|ui| {
                 if ui.button("Open URL [Enter]").clicked() {
                     let msg = Message::OpenBrowserPicker;
                     self.handle_message(msg, ctx);
@@ -158,7 +167,6 @@ impl eframe::App for GuiApp {
             });
         });
 
-        // Browser picker modal.
         if self.app.show_browser_picker {
             let mut close_picker = false;
             let mut picked: Option<usize> = None;
@@ -182,7 +190,7 @@ impl eframe::App for GuiApp {
                             }
                             if response.double_clicked() {
                                 self.app.selected_browser = i;
-                                picked = None; // skip the single-click select
+                                picked = None;
                                 let msg = Message::ConfirmSelection;
                                 self.handle_message(msg, ctx);
                                 return;
