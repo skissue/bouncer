@@ -5,7 +5,6 @@ use crate::module::Module;
 pub struct App {
     pub original_url: String,
     pub url: String,
-    pub should_quit: bool,
     pub browsers: Vec<BrowserEntry>,
     pub selected_browser: usize,
     pub show_browser_picker: bool,
@@ -14,22 +13,14 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
-        url: String,
-        modules: Vec<Box<dyn Module>>,
-        browsers: Vec<BrowserEntry>,
-    ) -> Self {
-        let default_idx = browsers
-            .iter()
-            .position(|b| b.is_default)
-            .unwrap_or(0);
+    pub fn new(url: String, modules: Vec<Box<dyn Module>>, browsers: Vec<BrowserEntry>) -> Self {
+        let default_idx = browsers.iter().position(|b| b.is_default).unwrap_or(0);
 
         let offers = Self::evaluate_modules(&modules, &url);
 
         Self {
             original_url: url.clone(),
             url,
-            should_quit: false,
             browsers,
             selected_browser: default_idx,
             show_browser_picker: false,
@@ -100,10 +91,7 @@ impl App {
                     Action::None
                 }
             }
-            Message::Quit => {
-                self.should_quit = true;
-                Action::Quit
-            }
+            Message::Quit => Action::Quit,
         }
     }
 }
