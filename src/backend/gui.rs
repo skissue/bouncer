@@ -1,11 +1,8 @@
-use std::sync::{Arc, Mutex};
-
-use eframe::egui;
-
+use super::{Backend, RunResult, RunAction};
 use crate::app::App;
 use crate::message::{Action, Message};
-
-use super::{Backend, RunResult};
+use eframe::egui;
+use std::sync::{Arc, Mutex};
 
 pub struct GuiBackend;
 
@@ -63,7 +60,17 @@ impl GuiApp {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
             Action::OpenUrl { exec, url } => {
-                *self.result.lock().unwrap() = Some(Some(RunResult { exec, url }));
+                *self.result.lock().unwrap() = Some(Some(RunResult {
+                    action: RunAction::Exec(exec),
+                    url,
+                }));
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+            Action::CopyToClipboard { url } => {
+                *self.result.lock().unwrap() = Some(Some(RunResult {
+                    action: RunAction::CopyToClipboard,
+                    url,
+                }));
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
         }
@@ -90,7 +97,10 @@ impl eframe::App for GuiApp {
             })
         } else if self.editing_url {
             let (esc, enter) = ctx.input(|i| {
-                (i.key_pressed(egui::Key::Escape), i.key_pressed(egui::Key::Enter))
+                (
+                    i.key_pressed(egui::Key::Escape),
+                    i.key_pressed(egui::Key::Enter),
+                )
             });
             if esc {
                 self.url_edit_buf = self.app.url.clone();
@@ -110,6 +120,8 @@ impl eframe::App for GuiApp {
                     Some(Message::Quit)
                 } else if i.key_pressed(egui::Key::Enter) {
                     Some(Message::OpenBrowserPicker)
+                } else if i.key_pressed(egui::Key::C) {
+                    Some(Message::CopyToClipboard)
                 } else if i.key_pressed(egui::Key::E) {
                     self.editing_url = true;
                     None
@@ -195,6 +207,11 @@ impl eframe::App for GuiApp {
             ui.horizontal(|ui| {
                 if ui.button("Open URL [Enter]").clicked() {
                     let msg = Message::OpenBrowserPicker;
+                    self.handle_message(msg, ctx);
+                }
+
+                if ui.button("Copy URL [c]").clicked() {
+                    let msg = Message::CopyToClipboard;
                     self.handle_message(msg, ctx);
                 }
 

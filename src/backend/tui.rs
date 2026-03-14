@@ -76,6 +76,12 @@ fn event_loop(
                                     url,
                                 }));
                             }
+                            Action::CopyToClipboard { url } => {
+                                return Ok(Some(RunResult {
+                                    action: RunAction::CopyToClipboard,
+                                    url,
+                                }));
+                            }
                         }
                     }
                     KeyCode::Esc => {
@@ -101,6 +107,7 @@ fn event_loop(
             } else {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => Some(Message::Quit),
+                    KeyCode::Char('c') => Some(Message::CopyToClipboard),
                     KeyCode::Enter => Some(Message::OpenBrowserPicker),
                     KeyCode::Char('e') => {
                         url_input = Some(Input::new(app.url.clone()));
@@ -121,6 +128,12 @@ fn event_loop(
                     Action::OpenUrl { exec, url } => {
                         return Ok(Some(RunResult {
                             action: RunAction::Exec(exec),
+                            url,
+                        }));
+                    }
+                    Action::CopyToClipboard { url } => {
+                        return Ok(Some(RunResult {
+                            action: RunAction::CopyToClipboard,
                             url,
                         }));
                     }
@@ -281,6 +294,8 @@ fn draw_footer(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     let mut spans = vec![
         Span::styled("  [Enter]", Style::default().add_modifier(Modifier::DIM)),
         Span::styled(" Open URL   ", Style::default().add_modifier(Modifier::DIM)),
+        Span::styled("[c]", Style::default().add_modifier(Modifier::DIM)),
+        Span::styled(" Copy URL   ", Style::default().add_modifier(Modifier::DIM)),
         Span::styled("[e]", Style::default().add_modifier(Modifier::DIM)),
         Span::styled(" Edit URL   ", Style::default().add_modifier(Modifier::DIM)),
     ];

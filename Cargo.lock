@@ -503,6 +503,7 @@ dependencies = [
 name = "bouncer"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "crossterm",
  "eframe",
  "freedesktop-desktop-entry",

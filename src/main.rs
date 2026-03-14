@@ -8,7 +8,7 @@ mod rules;
 use backend::Backend;
 use module::TrackingCleanerModule;
 
-use crate::backend::RunResult;
+use crate::backend::{RunAction, RunResult};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -35,8 +35,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(RunResult { action, url }) = result {
         match action {
-            backend::RunAction::Exec(command) => {
+            RunAction::Exec(command) => {
                 browser::open_url_with(&command, &url);
+            }
+            RunAction::CopyToClipboard => {
+                let mut clipboard = arboard::Clipboard::new()
+                    .expect("Failed to access clipboard");
+                clipboard
+                    .set_text(&url)
+                    .expect("Failed to copy to clipboard");
             }
         }
     }

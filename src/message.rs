@@ -6,6 +6,7 @@ pub enum Message {
     SelectNext,
     SelectPrevious,
     ConfirmSelection,
+    CopyToClipboard,
     Quit,
 }
 
@@ -13,4 +14,5 @@ pub enum Action {
     None,
     Quit,
     OpenUrl { exec: String, url: String },
+    CopyToClipboard { url: String },
 }

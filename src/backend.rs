@@ -19,6 +19,7 @@ pub struct RunResult {
 #[derive(Clone)]
 pub enum RunAction {
     Exec(String),
+    CopyToClipboard,
 }
 
 pub trait Backend {

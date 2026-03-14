@@ -91,6 +91,9 @@ impl App {
                     Action::None
                 }
             }
+            Message::CopyToClipboard => Action::CopyToClipboard {
+                url: self.active_url().to_string(),
+            },
             Message::Quit => Action::Quit,
         }
     }
