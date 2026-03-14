@@ -5,7 +5,7 @@ mod message;
 mod module;
 
 use backend::Backend;
-use module::TrackingCleanerModule;
+use module::{HttpToHttpsModule, RegexReplacerModule, TrackingCleanerModule, UnshortenModule};
 
 use crate::backend::{RunAction, RunResult};
 
@@ -18,7 +18,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let url = args[1].clone();
 
-    let modules: Vec<Box<dyn module::Module>> = vec![Box::new(TrackingCleanerModule::new())];
+    let modules: Vec<Box<dyn module::Module>> = vec![
+        Box::new(HttpToHttpsModule),
+        Box::new(TrackingCleanerModule::new()),
+        Box::new(UnshortenModule),
+        Box::new(RegexReplacerModule::new()),
+    ];
 
     let browsers = browser::discover_browsers("bouncer");
     let app = app::App::new(url, modules, browsers);
