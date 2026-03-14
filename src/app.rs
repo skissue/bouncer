@@ -3,8 +3,9 @@ use crate::message::{Action, Message};
 use crate::module::Module;
 
 pub struct App {
-    pub original_url: String,
     pub url: String,
+    pub undo_stack: Vec<String>,
+    pub redo_stack: Vec<String>,
     pub browsers: Vec<BrowserEntry>,
     pub selected_browser: usize,
     pub show_browser_picker: bool,
@@ -19,8 +20,9 @@ impl App {
         let offers = Self::evaluate_modules(&modules, &url);
 
         Self {
-            original_url: url.clone(),
             url,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
             browsers,
             selected_browser: default_idx,
             show_browser_picker: false,
@@ -41,6 +43,20 @@ impl App {
         self.offers = Self::evaluate_modules(&self.modules, &self.url);
     }
 
+    fn push_url(&mut self, new_url: String) {
+        self.undo_stack.push(std::mem::replace(&mut self.url, new_url));
+        self.redo_stack.clear();
+        self.re_evaluate();
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo_stack.is_empty()
+    }
+
     pub fn active_url(&self) -> &str {
         &self.url
     }
@@ -50,15 +66,50 @@ impl App {
             Message::ApplyModule(idx) => {
                 if let Some(&(module_idx, _)) = self.offers.get(idx) {
                     if let Ok(new_url) = self.modules[module_idx].transform(&self.url) {
-                        self.url = new_url;
-                        self.re_evaluate();
+                        self.push_url(new_url);
                     }
                 }
                 Action::None
             }
             Message::SetUrl(new_url) => {
-                self.url = new_url;
-                self.re_evaluate();
+                self.push_url(new_url);
+                Action::None
+            }
+            Message::Undo => {
+                if let Some(prev) = self.undo_stack.pop() {
+                    self.redo_stack.push(std::mem::replace(&mut self.url, prev));
+                    self.re_evaluate();
+                }
+                Action::None
+            }
+            Message::Redo => {
+                if let Some(next) = self.redo_stack.pop() {
+                    self.undo_stack.push(std::mem::replace(&mut self.url, next));
+                    self.re_evaluate();
+                }
+                Action::None
+            }
+            Message::UndoAll => {
+                if let Some(first) = self.undo_stack.first().cloned() {
+                    self.undo_stack.push(std::mem::replace(&mut self.url, first));
+                    let all = self.undo_stack.drain(..).collect::<Vec<_>>();
+                    // all contains: [original, ..., prev_current]
+                    // redo_stack should let RedoAll restore to prev_current (the last entry)
+                    self.redo_stack.extend(all.into_iter().skip(1));
+                    self.re_evaluate();
+                }
+                Action::None
+            }
+            Message::RedoAll => {
+                if let Some(last) = self.redo_stack.last().cloned() {
+                    self.redo_stack.push(std::mem::replace(&mut self.url, last));
+                    let all = self.redo_stack.drain(..).collect::<Vec<_>>();
+                    // all contains: [oldest_redo, ..., prev_current]
+                    // undo_stack should let UndoAll restore back
+                    let len = all.len();
+                    self.undo_stack.extend(all.into_iter().take(len - 1));
+                    self.re_evaluate();
+                }
                 Action::None
             }
             Message::OpenBrowserPicker => {

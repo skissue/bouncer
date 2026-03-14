@@ -7,6 +7,10 @@ pub enum Message {
     SelectPrevious,
     ConfirmSelection,
     CopyToClipboard,
+    Undo,
+    Redo,
+    UndoAll,
+    RedoAll,
     Quit,
 }
 

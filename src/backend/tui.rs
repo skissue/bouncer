@@ -43,6 +43,27 @@ impl Backend for TuiBackend {
     }
 }
 
+enum Dispatch {
+    Continue,
+    Quit,
+    Result(RunResult),
+}
+
+fn dispatch(app: &mut App, msg: Message) -> Dispatch {
+    match app.update(msg) {
+        Action::None => Dispatch::Continue,
+        Action::Quit => Dispatch::Quit,
+        Action::OpenUrl { exec, url } => Dispatch::Result(RunResult {
+            action: RunAction::Exec(exec),
+            url,
+        }),
+        Action::CopyToClipboard { url } => Dispatch::Result(RunResult {
+            action: RunAction::CopyToClipboard,
+            url,
+        }),
+    }
+}
+
 fn event_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
@@ -66,22 +87,10 @@ fn event_loop(
                     KeyCode::Enter => {
                         let new_url = input.value().to_string();
                         url_input = None;
-                        let msg = Message::SetUrl(new_url);
-                        match app.update(msg) {
-                            Action::None => {}
-                            Action::Quit => return Ok(None),
-                            Action::OpenUrl { exec, url } => {
-                                return Ok(Some(RunResult {
-                                    action: RunAction::Exec(exec),
-                                    url,
-                                }));
-                            }
-                            Action::CopyToClipboard { url } => {
-                                return Ok(Some(RunResult {
-                                    action: RunAction::CopyToClipboard,
-                                    url,
-                                }));
-                            }
+                        match dispatch(app, Message::SetUrl(new_url)) {
+                            Dispatch::Continue => {}
+                            Dispatch::Quit => return Ok(None),
+                            Dispatch::Result(r) => return Ok(Some(r)),
                         }
                     }
                     KeyCode::Esc => {
@@ -113,6 +122,10 @@ fn event_loop(
                         url_input = Some(Input::new(app.url.clone()));
                         None
                     }
+                    KeyCode::Char('u') => Some(Message::Undo),
+                    KeyCode::Char('U') => Some(Message::UndoAll),
+                    KeyCode::Char('r') => Some(Message::Redo),
+                    KeyCode::Char('R') => Some(Message::RedoAll),
                     KeyCode::Char(c @ '1'..='9') => {
                         let idx = (c as usize) - ('1' as usize);
                         Some(Message::ApplyModule(idx))
@@ -122,21 +135,10 @@ fn event_loop(
             };
 
             if let Some(msg) = msg {
-                match app.update(msg) {
-                    Action::None => {}
-                    Action::Quit => return Ok(None),
-                    Action::OpenUrl { exec, url } => {
-                        return Ok(Some(RunResult {
-                            action: RunAction::Exec(exec),
-                            url,
-                        }));
-                    }
-                    Action::CopyToClipboard { url } => {
-                        return Ok(Some(RunResult {
-                            action: RunAction::CopyToClipboard,
-                            url,
-                        }));
-                    }
+                match dispatch(app, msg) {
+                    Dispatch::Continue => {}
+                    Dispatch::Quit => return Ok(None),
+                    Dispatch::Result(r) => return Ok(Some(r)),
                 }
             }
         }
@@ -151,23 +153,14 @@ fn draw(frame: &mut Frame, app: &App, url_input: &Option<Input>) {
     let mut text = vec![
         Line::from(""),
         Line::from(Span::styled(
-            "  Original URL:",
+            "  URL:",
             Style::default().add_modifier(Modifier::BOLD),
         )),
-        Line::from(format!("  {}", app.original_url)),
-    ];
-
-    if app.url != app.original_url {
-        text.push(Line::from(""));
-        text.push(Line::from(Span::styled(
-            "  Current URL:",
-            Style::default().add_modifier(Modifier::BOLD),
-        )));
-        text.push(Line::from(Span::styled(
+        Line::from(Span::styled(
             format!("  {}", app.url),
             Style::default().fg(Color::Green),
-        )));
-    }
+        )),
+    ];
 
     if !app.offers.is_empty() {
         text.push(Line::from(""));
@@ -299,6 +292,28 @@ fn draw_footer(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Span::styled("[e]", Style::default().add_modifier(Modifier::DIM)),
         Span::styled(" Edit URL   ", Style::default().add_modifier(Modifier::DIM)),
     ];
+
+    if app.can_undo() {
+        spans.push(Span::styled(
+            "[u/U]",
+            Style::default().add_modifier(Modifier::DIM),
+        ));
+        spans.push(Span::styled(
+            " Undo   ",
+            Style::default().add_modifier(Modifier::DIM),
+        ));
+    }
+
+    if app.can_redo() {
+        spans.push(Span::styled(
+            "[r/R]",
+            Style::default().add_modifier(Modifier::DIM),
+        ));
+        spans.push(Span::styled(
+            " Redo   ",
+            Style::default().add_modifier(Modifier::DIM),
+        ));
+    }
 
     if !app.offers.is_empty() {
         if app.offers.len() == 1 {

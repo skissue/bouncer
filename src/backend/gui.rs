@@ -125,6 +125,18 @@ impl eframe::App for GuiApp {
                 } else if i.key_pressed(egui::Key::E) {
                     self.editing_url = true;
                     None
+                } else if i.key_pressed(egui::Key::U) {
+                    if i.modifiers.shift {
+                        Some(Message::UndoAll)
+                    } else {
+                        Some(Message::Undo)
+                    }
+                } else if i.key_pressed(egui::Key::R) {
+                    if i.modifiers.shift {
+                        Some(Message::RedoAll)
+                    } else {
+                        Some(Message::Redo)
+                    }
                 } else {
                     for n in 1..=9u8 {
                         let key = match n {
@@ -157,13 +169,7 @@ impl eframe::App for GuiApp {
             ui.add_space(8.0);
 
             ui.horizontal(|ui| {
-                ui.strong("Original URL:");
-                ui.label(&self.app.original_url);
-            });
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.strong("Current URL:");
+                ui.strong("URL:");
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut self.url_edit_buf)
                         .id(url_field_id)
@@ -176,7 +182,23 @@ impl eframe::App for GuiApp {
                 }
             });
 
-            ui.add_space(16.0);
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                if ui.add_enabled(self.app.can_undo(), egui::Button::new("⟲ Undo")).clicked() {
+                    self.handle_message(Message::Undo, ctx);
+                }
+                if ui.add_enabled(self.app.can_undo(), egui::Button::new("⟲⟲ Undo All")).clicked() {
+                    self.handle_message(Message::UndoAll, ctx);
+                }
+                if ui.add_enabled(self.app.can_redo(), egui::Button::new("⟳ Redo")).clicked() {
+                    self.handle_message(Message::Redo, ctx);
+                }
+                if ui.add_enabled(self.app.can_redo(), egui::Button::new("⟳⟳ Redo All")).clicked() {
+                    self.handle_message(Message::RedoAll, ctx);
+                }
+            });
+
+            ui.add_space(12.0);
 
             if !self.app.offers.is_empty() {
                 ui.strong("Available actions:");
