@@ -1,5 +1,6 @@
 pub enum Message {
     ApplyModule(usize),
+    SetUrl(String),
     OpenBrowserPicker,
     CloseBrowserPicker,
     SelectNext,

@@ -38,16 +38,26 @@ impl Backend for GuiBackend {
 struct GuiApp {
     app: App,
     result: Arc<Mutex<Option<Option<RunResult>>>>,
+    url_edit_buf: String,
+    editing_url: bool,
 }
 
 impl GuiApp {
     fn new(app: App, result: Arc<Mutex<Option<Option<RunResult>>>>) -> Self {
-        Self { app, result }
+        let url_edit_buf = app.url.clone();
+        Self {
+            app,
+            result,
+            url_edit_buf,
+            editing_url: false,
+        }
     }
 
     fn handle_message(&mut self, msg: Message, ctx: &egui::Context) {
         match self.app.update(msg) {
-            Action::None => {}
+            Action::None => {
+                self.url_edit_buf = self.app.url.clone();
+            }
             Action::Quit => {
                 *self.result.lock().unwrap() = Some(None);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -62,6 +72,8 @@ impl GuiApp {
 
 impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let url_field_id = egui::Id::new("url_edit_field");
+
         let msg = if self.app.show_browser_picker {
             ctx.input(|i| {
                 if i.key_pressed(egui::Key::Escape) {
@@ -76,12 +88,31 @@ impl eframe::App for GuiApp {
                     None
                 }
             })
+        } else if self.editing_url {
+            let (esc, enter) = ctx.input(|i| {
+                (i.key_pressed(egui::Key::Escape), i.key_pressed(egui::Key::Enter))
+            });
+            if esc {
+                self.url_edit_buf = self.app.url.clone();
+                self.editing_url = false;
+                ctx.memory_mut(|m| m.surrender_focus(url_field_id));
+                None
+            } else if enter {
+                self.editing_url = false;
+                ctx.memory_mut(|m| m.surrender_focus(url_field_id));
+                Some(Message::SetUrl(self.url_edit_buf.clone()))
+            } else {
+                None
+            }
         } else {
             ctx.input(|i| {
                 if i.key_pressed(egui::Key::Q) || i.key_pressed(egui::Key::Escape) {
                     Some(Message::Quit)
                 } else if i.key_pressed(egui::Key::Enter) {
                     Some(Message::OpenBrowserPicker)
+                } else if i.key_pressed(egui::Key::E) {
+                    self.editing_url = true;
+                    None
                 } else {
                     for n in 1..=9u8 {
                         let key = match n {
@@ -118,13 +149,20 @@ impl eframe::App for GuiApp {
                 ui.label(&self.app.original_url);
             });
 
-            if self.app.url != self.app.original_url {
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.strong("Current URL:");
-                    ui.colored_label(egui::Color32::from_rgb(100, 200, 100), self.app.active_url());
-                });
-            }
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.strong("Current URL:");
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.url_edit_buf)
+                        .id(url_field_id)
+                        .desired_width(ui.available_width()),
+                );
+                if self.editing_url && !response.has_focus() {
+                    response.request_focus();
+                } else if response.gained_focus() {
+                    self.editing_url = true;
+                }
+            });
 
             ui.add_space(16.0);
 

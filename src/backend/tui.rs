@@ -13,6 +13,8 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Clear, HighlightSpacing, List, ListItem, ListState, Paragraph, Wrap},
 };
+use tui_input::Input;
+use tui_input::backend::crossterm::EventHandler;
 
 use crate::app::App;
 use crate::message::{Action, Message};
@@ -43,14 +45,46 @@ fn event_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
 ) -> Result<Option<RunResult>, Box<dyn std::error::Error>> {
-    loop {
-        terminal.draw(|frame| draw(frame, app))?;
+    let mut url_input: Option<Input> = None;
 
-        if let Event::Key(key) = event::read()? {
+    loop {
+        terminal.draw(|frame| draw(frame, app, &url_input))?;
+
+        let ev = event::read()?;
+        if let Event::Key(key) = &ev {
             if key.kind != KeyEventKind::Press {
                 continue;
             }
+        }
 
+        // URL editor mode
+        if let Some(ref mut input) = url_input {
+            if let Event::Key(key) = &ev {
+                match key.code {
+                    KeyCode::Enter => {
+                        let new_url = input.value().to_string();
+                        url_input = None;
+                        let msg = Message::SetUrl(new_url);
+                        match app.update(msg) {
+                            Action::None => {}
+                            Action::Quit => return Ok(None),
+                            Action::OpenUrl { exec, url } => {
+                                return Ok(Some(RunResult { exec, url }));
+                            }
+                        }
+                    }
+                    KeyCode::Esc => {
+                        url_input = None;
+                    }
+                    _ => {
+                        input.handle_event(&ev);
+                    }
+                }
+            }
+            continue;
+        }
+
+        if let Event::Key(key) = &ev {
             let msg = if app.show_browser_picker {
                 match key.code {
                     KeyCode::Esc => Some(Message::CloseBrowserPicker),
@@ -63,6 +97,10 @@ fn event_loop(
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => Some(Message::Quit),
                     KeyCode::Enter => Some(Message::OpenBrowserPicker),
+                    KeyCode::Char('e') => {
+                        url_input = Some(Input::new(app.url.clone()));
+                        None
+                    }
                     KeyCode::Char(c @ '1'..='9') => {
                         let idx = (c as usize) - ('1' as usize);
                         Some(Message::ApplyModule(idx))
@@ -84,7 +122,7 @@ fn event_loop(
     }
 }
 
-fn draw(frame: &mut Frame, app: &App) {
+fn draw(frame: &mut Frame, app: &App, url_input: &Option<Input>) {
     let chunks = Layout::vertical([
         Constraint::Min(5),
         Constraint::Length(3),
@@ -142,6 +180,31 @@ fn draw(frame: &mut Frame, app: &App) {
         draw_browser_picker(frame, app, chunks[1]);
     } else {
         draw_footer(frame, app, chunks[1]);
+    }
+
+    // URL editor overlay
+    if let Some(input) = url_input {
+        let width = (frame.area().width - 4).min(80);
+        let height = 3;
+        let popup = centered_rect(width, height, frame.area());
+
+        frame.render_widget(Clear, popup);
+
+        let input_block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Edit URL (Enter to confirm, Esc to cancel) ");
+
+        let visible_width = popup.width.saturating_sub(3) as usize;
+        let scroll = input.visual_scroll(visible_width);
+
+        let input_widget = Paragraph::new(input.value())
+            .style(Style::default().fg(Color::Yellow))
+            .scroll((0, scroll as u16))
+            .block(input_block);
+        frame.render_widget(input_widget, popup);
+
+        let cursor_x = input.visual_cursor().max(scroll) - scroll;
+        frame.set_cursor_position((popup.x + 1 + cursor_x as u16, popup.y + 1));
     }
 }
 
@@ -221,6 +284,8 @@ fn draw_footer(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     let mut spans = vec![
         Span::styled("  [Enter]", Style::default().add_modifier(Modifier::DIM)),
         Span::styled(" Open URL   ", Style::default().add_modifier(Modifier::DIM)),
+        Span::styled("[e]", Style::default().add_modifier(Modifier::DIM)),
+        Span::styled(" Edit URL   ", Style::default().add_modifier(Modifier::DIM)),
     ];
 
     if !app.offers.is_empty() {

@@ -65,6 +65,11 @@ impl App {
                 }
                 Action::None
             }
+            Message::SetUrl(new_url) => {
+                self.url = new_url;
+                self.re_evaluate();
+                Action::None
+            }
             Message::OpenBrowserPicker => {
                 self.show_browser_picker = true;
                 Action::None
