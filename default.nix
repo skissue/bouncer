@@ -28,7 +28,9 @@ rustPlatform.buildRustPackage {
 
   nativeBuildInputs = [copyDesktopItems] ++ lib.optionals gui [pkg-config];
 
-  buildInputs = lib.optionals gui [wayland libxkbcommon libGL];
+  postFixup = lib.optionalString gui ''
+    patchelf --add-rpath ${lib.makeLibraryPath [wayland libxkbcommon libGL]} $out/bin/bouncer
+  '';
 
   desktopItems = [
     (makeDesktopItem {
