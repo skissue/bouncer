@@ -3,7 +3,6 @@ mod backend;
 mod browser;
 mod message;
 mod module;
-mod rules;
 
 use backend::Backend;
 use module::TrackingCleanerModule;
@@ -17,11 +16,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let data = include_str!("../data.minify.json");
-    let cleaner = rules::Cleaner::from_json(data);
     let url = args[1].clone();
 
-    let modules: Vec<Box<dyn module::Module>> = vec![Box::new(TrackingCleanerModule::new(cleaner))];
+    let modules: Vec<Box<dyn module::Module>> = vec![Box::new(TrackingCleanerModule::new())];
 
     let browsers = browser::discover_browsers("bouncer");
     let app = app::App::new(url, modules, browsers);

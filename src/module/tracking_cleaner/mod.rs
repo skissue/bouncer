@@ -1,17 +1,16 @@
-use crate::rules::Cleaner;
+mod rules;
 
-pub trait Module {
-    fn name(&self) -> &str;
-    fn evaluate(&self, url: &str) -> Option<String>;
-    fn transform(&self, url: &str) -> Result<String, String>;
-}
+use super::Module;
+use rules::Cleaner;
 
 pub struct TrackingCleanerModule {
     cleaner: Cleaner,
 }
 
 impl TrackingCleanerModule {
-    pub fn new(cleaner: Cleaner) -> Self {
+    pub fn new() -> Self {
+        let data = include_str!("../../../resources/data.minify.json");
+        let cleaner = Cleaner::from_json(data);
         Self { cleaner }
     }
 }
