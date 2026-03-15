@@ -9,7 +9,7 @@ pub struct TrackingCleanerModule {
 
 impl TrackingCleanerModule {
     pub fn new() -> Self {
-        let data = include_str!("../../../resources/data.minify.json");
+        let data = include_str!("../../../resources/clearurls-data.min.json");
         let cleaner = Cleaner::from_json(data);
         Self { cleaner }
     }
