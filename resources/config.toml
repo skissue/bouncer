@@ -1,0 +1,14 @@
+# Bouncer configuration file
+# Place this file at $XDG_CONFIG_HOME/bouncer/config.toml
+# (defaults to ~/.config/bouncer/config.toml)
+
+# List of enabled modules. Remove entries to disable modules.
+# enabled_modules = ["https", "tracking_cleaner", "unshorten", "regex_replacer"]
+
+# Additional regex replacement rules.
+# Each rule requires a pattern (regex), replacement, and description.
+#
+# [[regex_replacer.rules]]
+# pattern = '^(https?://)reddit\.com(/.*)?$'
+# replacement = '${1}old.reddit.com${2}'
+# description = "Use old Reddit"

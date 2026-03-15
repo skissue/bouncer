@@ -1,6 +1,7 @@
 mod app;
 mod backend;
 mod browser;
+mod config;
 mod message;
 mod module;
 
@@ -17,13 +18,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let url = args[1].clone();
+    let config = config::Config::load();
 
-    let modules: Vec<Box<dyn module::Module>> = vec![
-        Box::new(HttpToHttpsModule),
-        Box::new(TrackingCleanerModule::new()),
-        Box::new(UnshortenModule),
-        Box::new(RegexReplacerModule::new()),
-    ];
+    let mut modules: Vec<Box<dyn module::Module>> = Vec::new();
+    for slug in &config.enabled_modules {
+        let m: Box<dyn module::Module> = match slug.as_str() {
+            "https" => Box::new(HttpToHttpsModule),
+            "tracking_cleaner" => Box::new(TrackingCleanerModule::new()),
+            "unshorten" => Box::new(UnshortenModule),
+            "regex_replacer" => Box::new(RegexReplacerModule::new(&config)),
+            unknown => {
+                eprintln!("Error: unknown module '{unknown}' in config");
+                std::process::exit(1);
+            }
+        };
+        modules.push(m);
+    }
 
     let browsers = browser::discover_browsers("bouncer");
     let app = app::App::new(url, modules, browsers);

@@ -1,18 +1,25 @@
 use regex::Regex;
 
 use super::Module;
+use crate::config::Config;
 
 pub struct RegexReplacerModule {
     rules: Vec<(Regex, String, String)>, // (pattern, replacement, description)
 }
 
 impl RegexReplacerModule {
-    pub fn new() -> Self {
-        let rules = vec![(
+    pub fn new(config: &Config) -> Self {
+        let mut rules = vec![(
             Regex::new(r"^(https?://)(?:x\.com|twitter\.com)(/.*)?$").unwrap(),
             "${1}xcancel.com${2}".to_string(),
             "Redirect to xcancel.com".to_string(),
         )];
+        for rule in &config.regex_replacer.rules {
+            match Regex::new(&rule.pattern) {
+                Ok(re) => rules.push((re, rule.replacement.clone(), rule.description.clone())),
+                Err(e) => eprintln!("Warning: invalid regex pattern '{}': {}", rule.pattern, e),
+            }
+        }
         Self { rules }
     }
 }
