@@ -1,0 +1,38 @@
+name: Update ClearURLs Data
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # Weekly on Monday at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download updated data
+        run: |
+          curl -fsSL -o /tmp/clearurls-data.min.json https://rules2.clearurls.xyz/data.minify.json
+          curl -fsSL -o /tmp/clearurls.hash https://rules2.clearurls.xyz/rules.minify.hash
+
+      - name: Verify hash
+        run: |
+          expected=$(cat /tmp/clearurls.hash)
+          actual=$(sha256sum /tmp/clearurls-data.min.json | awk '{print $1}')
+          if [ "$expected" != "$actual" ]; then
+            echo "Hash mismatch: expected $expected, got $actual"
+            exit 1
+          fi
+
+      - name: Update data file
+        run: cp /tmp/clearurls-data.min.json resources/clearurls-data.min.json
+
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "bump: update ClearURLs data"
+          file_pattern: resources/clearurls-data.min.json
