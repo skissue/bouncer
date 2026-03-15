@@ -38,9 +38,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let browsers = browser::discover_browsers("bouncer");
     let app = app::App::new(url, modules, browsers);
 
-    #[cfg(feature = "tui")]
-    let backend = backend::tui::TuiBackend;
-    #[cfg(feature = "gui")]
     let backend = backend::gui::GuiBackend;
 
     let result = backend.run(app)?;

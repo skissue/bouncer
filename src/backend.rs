@@ -1,12 +1,4 @@
-#[cfg(feature = "gui")]
 pub mod gui;
-#[cfg(feature = "tui")]
-pub mod tui;
-
-#[cfg(all(feature = "tui", feature = "gui"))]
-compile_error!("Features `tui` and `gui` are mutually exclusive.");
-#[cfg(not(any(feature = "tui", feature = "gui")))]
-compile_error!("Either the `tui` or `gui` feature must be enabled.");
 
 use crate::app::App;
 

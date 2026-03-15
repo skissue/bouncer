@@ -12,12 +12,10 @@
   in {
     overlays.default = final: prev: {
       bouncer = final.callPackage ./default.nix {};
-      bouncer-gui = final.callPackage ./default.nix {gui = true;};
     };
 
     packages = forAllSystems (pkgs: rec {
       bouncer = pkgs.callPackage ./default.nix {};
-      bouncer-gui = pkgs.callPackage ./default.nix {gui = true;};
       default = bouncer;
     });
 
