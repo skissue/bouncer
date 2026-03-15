@@ -1,35 +1,32 @@
-use super::{Backend, RunResult, RunAction};
+use super::{RunResult, RunAction};
 use crate::app::App;
 use crate::message::{Action, Message};
+use crate::module::GuiModuleAction;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
-pub struct GuiBackend;
+pub fn run(app: App) -> Result<Option<RunResult>, Box<dyn std::error::Error>> {
+    let result = Arc::new(Mutex::new(None::<Option<RunResult>>));
 
-impl Backend for GuiBackend {
-    fn run(self, app: App) -> Result<Option<RunResult>, Box<dyn std::error::Error>> {
-        let result = Arc::new(Mutex::new(None::<Option<RunResult>>));
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("Bouncer")
+            .with_app_id("bouncer")
+            .with_inner_size([500.0, 350.0])
+            .with_window_type(egui::viewport::X11WindowType::Dialog),
+        ..Default::default()
+    };
 
-        let options = eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default()
-                .with_title("Bouncer")
-                .with_app_id("bouncer")
-                .with_inner_size([500.0, 350.0])
-                .with_window_type(egui::viewport::X11WindowType::Dialog),
-            ..Default::default()
-        };
+    let result_clone = Arc::clone(&result);
+    eframe::run_native(
+        "bouncer",
+        options,
+        Box::new(move |_cc| Ok(Box::new(GuiApp::new(app, result_clone)))),
+    )
+    .map_err(|e| format!("eframe error: {e}"))?;
 
-        let result_clone = Arc::clone(&result);
-        eframe::run_native(
-            "bouncer",
-            options,
-            Box::new(move |_cc| Ok(Box::new(GuiApp::new(app, result_clone)))),
-        )
-        .map_err(|e| format!("eframe error: {e}"))?;
-
-        let lock = result.lock().unwrap();
-        Ok(lock.clone().unwrap_or(None))
-    }
+    let lock = result.lock().unwrap();
+    Ok(lock.clone().unwrap_or(None))
 }
 
 struct GuiApp {
@@ -204,23 +201,27 @@ impl eframe::App for GuiApp {
                 ui.strong("Available actions:");
                 ui.add_space(4.0);
 
-                let offers: Vec<(usize, String, String)> = self
+                let offers: Vec<(usize, usize, String)> = self
                     .app
                     .offers
                     .iter()
                     .enumerate()
-                    .map(|(i, (module_idx, proposal))| {
-                        let name = self.app.modules[*module_idx].name().to_string();
-                        (i, name, proposal.clone())
-                    })
+                    .map(|(i, (module_idx, proposal))| (i, *module_idx, proposal.clone()))
                     .collect();
+                let url = self.app.url.clone();
 
-                for (i, name, proposal) in &offers {
-                    let label = format!("[{}] {} — {}", i + 1, name, proposal);
-                    if ui.button(&label).clicked() {
-                        let msg = Message::ApplyModule(*i);
-                        self.handle_message(msg, ctx);
+                let mut clicked_offer = None;
+                for (offer_idx, module_idx, proposal) in &offers {
+                    let module = &mut self.app.modules[*module_idx];
+                    if let Some(GuiModuleAction::Apply) =
+                        module.render_offer(ui, *offer_idx, proposal, &url)
+                    {
+                        clicked_offer = Some(*offer_idx);
                     }
+                }
+
+                if let Some(idx) = clicked_offer {
+                    self.handle_message(Message::ApplyModule(idx), ctx);
                 }
 
                 ui.add_space(8.0);

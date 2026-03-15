@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use super::Module;
+use super::{GuiModule, Module};
 use crate::config::Config;
 
 pub struct RegexReplacerModule {
@@ -23,6 +23,8 @@ impl RegexReplacerModule {
         Self { rules }
     }
 }
+
+impl GuiModule for RegexReplacerModule {}
 
 impl Module for RegexReplacerModule {
     fn name(&self) -> &str {

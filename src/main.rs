@@ -5,7 +5,6 @@ mod config;
 mod message;
 mod module;
 
-use backend::Backend;
 use module::{HttpToHttpsModule, RegexReplacerModule, TrackingCleanerModule, UnshortenModule};
 
 use crate::backend::{RunAction, RunResult};
@@ -20,9 +19,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = args[1].clone();
     let config = config::Config::load();
 
-    let mut modules: Vec<Box<dyn module::Module>> = Vec::new();
+    let mut modules: Vec<Box<dyn module::GuiModule>> = Vec::new();
     for slug in &config.enabled_modules {
-        let m: Box<dyn module::Module> = match slug.as_str() {
+        let m: Box<dyn module::GuiModule> = match slug.as_str() {
             "https" => Box::new(HttpToHttpsModule),
             "tracking_cleaner" => Box::new(TrackingCleanerModule::new()),
             "unshorten" => Box::new(UnshortenModule),
@@ -38,9 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let browsers = browser::discover_browsers("bouncer");
     let app = app::App::new(url, modules, browsers);
 
-    let backend = backend::gui::GuiBackend;
-
-    let result = backend.run(app)?;
+    let result = backend::gui::run(app)?;
 
     if let Some(RunResult { action, url }) = result {
         match action {

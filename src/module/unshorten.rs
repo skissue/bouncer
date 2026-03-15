@@ -1,4 +1,4 @@
-use super::Module;
+use super::{GuiModule, Module};
 
 const SHORT_DOMAINS: &[&str] = &[
     "bit.ly",
@@ -24,6 +24,8 @@ impl UnshortenModule {
         false
     }
 }
+
+impl GuiModule for UnshortenModule {}
 
 impl Module for UnshortenModule {
     fn name(&self) -> &str {

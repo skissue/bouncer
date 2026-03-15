@@ -1,6 +1,6 @@
 mod rules;
 
-use super::Module;
+use super::{GuiModule, Module};
 use rules::Cleaner;
 
 pub struct TrackingCleanerModule {
@@ -14,6 +14,8 @@ impl TrackingCleanerModule {
         Self { cleaner }
     }
 }
+
+impl GuiModule for TrackingCleanerModule {}
 
 impl Module for TrackingCleanerModule {
     fn name(&self) -> &str {

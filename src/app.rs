@@ -1,6 +1,6 @@
 use crate::browser::BrowserEntry;
 use crate::message::{Action, Message};
-use crate::module::Module;
+use crate::module::GuiModule;
 
 pub struct App {
     pub url: String,
@@ -9,12 +9,12 @@ pub struct App {
     pub browsers: Vec<BrowserEntry>,
     pub selected_browser: usize,
     pub show_browser_picker: bool,
-    pub modules: Vec<Box<dyn Module>>,
+    pub modules: Vec<Box<dyn GuiModule>>,
     pub offers: Vec<(usize, String)>,
 }
 
 impl App {
-    pub fn new(url: String, modules: Vec<Box<dyn Module>>, browsers: Vec<BrowserEntry>) -> Self {
+    pub fn new(url: String, modules: Vec<Box<dyn GuiModule>>, browsers: Vec<BrowserEntry>) -> Self {
         let default_idx = browsers.iter().position(|b| b.is_default).unwrap_or(0);
 
         let offers = Self::evaluate_modules(&modules, &url);
@@ -31,7 +31,7 @@ impl App {
         }
     }
 
-    fn evaluate_modules(modules: &[Box<dyn Module>], url: &str) -> Vec<(usize, String)> {
+    fn evaluate_modules(modules: &[Box<dyn GuiModule>], url: &str) -> Vec<(usize, String)> {
         modules
             .iter()
             .enumerate()

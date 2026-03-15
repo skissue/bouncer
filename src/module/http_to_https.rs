@@ -1,6 +1,8 @@
-use super::Module;
+use super::{GuiModule, Module};
 
 pub struct HttpToHttpsModule;
+
+impl GuiModule for HttpToHttpsModule {}
 
 impl Module for HttpToHttpsModule {
     fn name(&self) -> &str {
