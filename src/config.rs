@@ -36,12 +36,25 @@ pub struct RegexRule {
     pub description: String,
 }
 
+const DEFAULT_CONFIG: &str = include_str!("../resources/config.toml");
+
 impl Config {
     pub fn load() -> Self {
         let path = config_path();
         let contents = match std::fs::read_to_string(&path) {
             Ok(c) => c,
-            Err(_) => return Config::default(),
+            Err(_) => {
+                if let Some(parent) = path.parent() {
+                    if let Err(e) = std::fs::create_dir_all(parent) {
+                        eprintln!("Warning: failed to create config directory {}: {}", parent.display(), e);
+                        return Config::default();
+                    }
+                }
+                if let Err(e) = std::fs::write(&path, DEFAULT_CONFIG) {
+                    eprintln!("Warning: failed to write default config to {}: {}", path.display(), e);
+                }
+                return Config::default();
+            }
         };
         match toml::from_str(&contents) {
             Ok(config) => config,
