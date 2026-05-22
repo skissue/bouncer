@@ -525,7 +525,6 @@ dependencies = [
 name = "bouncer"
 version = "0.1.0"
 dependencies = [
- "arboard",
  "eframe",
  "freedesktop-desktop-entry",
  "regex",

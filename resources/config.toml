@@ -5,6 +5,9 @@
 # List of enabled modules. Remove entries to disable modules.
 # enabled_modules = ["https", "tracking_cleaner", "unshorten", "regex_replacer"]
 
+# Command used by the copy action. It is spawned with the URL as its sole argument.
+# copy_command = "wl-copy"
+
 # Additional regex replacement rules.
 # Each rule requires a pattern (regex), replacement, and description.
 #

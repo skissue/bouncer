@@ -9,6 +9,11 @@ use module::{HttpToHttpsModule, RegexReplacerModule, TrackingCleanerModule, Unsh
 
 use crate::backend::{RunAction, RunResult};
 
+fn copy_to_clipboard(copy_command: &str, url: &str) -> std::io::Result<()> {
+    std::process::Command::new(copy_command).arg(url).spawn()?;
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
@@ -45,11 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 browser::open_url_with(&command, &url);
             }
             RunAction::CopyToClipboard => {
-                let mut clipboard = arboard::Clipboard::new()
-                    .expect("Failed to access clipboard");
-                clipboard
-                    .set_text(&url)
-                    .expect("Failed to copy to clipboard");
+                copy_to_clipboard(&config.copy_command, &url)?;
             }
         }
     }

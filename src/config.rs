@@ -3,11 +3,13 @@ use std::path::PathBuf;
 
 const DEFAULT_ENABLED_MODULES: &[&str] =
     &["https", "tracking_cleaner", "unshorten", "regex_replacer"];
+const DEFAULT_COPY_COMMAND: &str = "wl-copy";
 
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub enabled_modules: Vec<String>,
+    pub copy_command: String,
     pub regex_replacer: RegexReplacerConfig,
 }
 
@@ -18,6 +20,7 @@ impl Default for Config {
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
+            copy_command: DEFAULT_COPY_COMMAND.to_string(),
             regex_replacer: RegexReplacerConfig::default(),
         }
     }
